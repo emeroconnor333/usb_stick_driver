@@ -1,0 +1,1 @@
+savedcmd_/home/emer/usb_stick_driver/usb_stick_driver.mod := printf '%s\n'   usb_stick_driver.o | awk '!x[$$0]++ { print("/home/emer/usb_stick_driver/"$$0) }' > /home/emer/usb_stick_driver/usb_stick_driver.mod

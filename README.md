@@ -12,7 +12,7 @@ It's probably because the default Linux driver has control
 
 unbind usb-storage: 
 echo "3-2:1.0" | sudo tee /sys/bus/usb/drivers/usb-storage/unbind 
-and replace number in brackets according to previous command
+and replace port number in quotations according to the command: lsusb -t
 
 bind your driver: 
 echo "abcd 1234" | sudo tee /sys/bus/usb/drivers/usb_stick_driver/new_id 
