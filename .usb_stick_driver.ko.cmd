@@ -1,0 +1,1 @@
+savedcmd_/home/emer/usb_stick_driver/usb_stick_driver.ko := ld -r -m elf_x86_64 -z noexecstack --no-warn-rwx-segments --build-id=sha1  -T scripts/module.lds -o /home/emer/usb_stick_driver/usb_stick_driver.ko /home/emer/usb_stick_driver/usb_stick_driver.o /home/emer/usb_stick_driver/usb_stick_driver.mod.o

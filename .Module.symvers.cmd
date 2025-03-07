@@ -1,0 +1,1 @@
+savedcmd_/home/emer/usb_stick_driver/Module.symvers :=  scripts/mod/modpost -M -m -a      -o /home/emer/usb_stick_driver/Module.symvers -T /home/emer/usb_stick_driver/modules.order -i Module.symvers -e 
