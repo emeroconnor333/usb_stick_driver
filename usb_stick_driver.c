@@ -7,30 +7,88 @@
 
 #define MAJOR_NUMBER 42 // MAJOR_NUMBER number for the character device
 
+#define BUFFER_SIZE 1024
+static char buffer[BUFFER_SIZE];  // Buffer to store data
+static int data_available = 0;    // Flag to track if data is available
+
 // Define the file operations structure
 static int usb_open(struct inode *inode, struct file *file)
 {
+    // Check if the device is already open by another process
+    if (data_available > 0) {
+        printk(KERN_WARNING "USB Stick is already in use!\n");
+        return -EBUSY;  // Device is busy
+    }
+
     printk(KERN_INFO "USB Stick: Device opened\n");
-    return 0;
+
+    // Initialize the buffer and data flag (e.g., reset buffer on open)
+    memset(buffer, 0, BUFFER_SIZE);  // Clear the buffer
+    data_available = 0;  // Reset data availability
+
+    return 0;  // Success
 }
 
 static int usb_release(struct inode *inode, struct file *file)
 {
     printk(KERN_INFO "USB Stick: Device closed\n");
+    data_available = 0;  // Reset data availability on close
     return 0;
 }
 
 static ssize_t usb_read(struct file *file, char __user *user_buffer, size_t len, loff_t *offset)
 {
+    ssize_t bytes_read = 0;
+
     printk(KERN_INFO "USB Stick: Read called\n");
-    return 0;  // Placeholder for reading logic
+
+    // If no data is available, we need to block the read operation
+    if (data_available == 0) {
+        printk(KERN_INFO "USB Stick: No data available to read\n");
+        return 0;  // No data available to read, return 0 bytes
+    }
+
+    // Simulate reading the buffer by copying data to the user buffer
+    while (len && data_available > 0) {
+        if (copy_to_user(user_buffer + bytes_read, buffer + bytes_read, 1)) {
+            printk(KERN_ERR "Failed to copy data to user space\n");
+            return -EFAULT;  // Return error if copy to user fails
+        }
+
+        bytes_read++;  // Increment bytes read
+        len--;          // Decrease remaining bytes to read
+        data_available--; // Decrease available data
+    }
+
+    printk(KERN_INFO "USB Stick: Read %zd bytes\n", bytes_read);
+    return bytes_read;  // Return the number of bytes successfully read
 }
 
 static ssize_t usb_write(struct file *file, const char __user *user_buffer, size_t len, loff_t *offset)
 {
+    ssize_t bytes_written = 0;
+
     printk(KERN_INFO "USB Stick: Write called\n");
-    return len;  // Placeholder for writing logic
+
+    // Ensure that there is enough space in the buffer
+    while (len && bytes_written < BUFFER_SIZE) {
+        // Copy data from user-space to kernel-space
+        if (copy_from_user(buffer + bytes_written, user_buffer + bytes_written, 1)) {
+            printk(KERN_ERR "Failed to copy data from user space\n");
+            return -EFAULT;  // Return error if copy fails
+        }
+
+        bytes_written++;
+        len--;  // Decrement the remaining bytes to write
+    }
+
+    // Mark how much data was written in the buffer
+    data_available = bytes_written;
+
+    printk(KERN_INFO "USB Stick: Written %zd bytes\n", bytes_written);
+    return bytes_written;  // Return the number of bytes written
 }
+
 
 // Define the file operations structure
 static struct file_operations fops = {
@@ -91,6 +149,8 @@ static int __init usb_init(void)
 
     // Create the device file under /dev
     device_create(usb_class, NULL, MKDEV(MAJOR_NUMBER, 0), NULL, "usb_stick");
+    // Set permissions for the device file (0666 means rw-rw-rw-)
+    // chmod("/dev/usb_stick", S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 
     return 0;
 }
