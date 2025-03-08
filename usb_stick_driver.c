@@ -84,6 +84,7 @@ static int __init usb_init(void)
         pr_err("Failed to register character device\n");
         return result_char;
     }
+    printk(KERN_INFO "USB Stick driver registered with major number %d.\n", MAJOR);
 
     int result_usb = usb_register(&usb_driver);
     if (result_usb < 0) {
@@ -91,7 +92,7 @@ static int __init usb_init(void)
         unregister_chrdev(MAJOR, "usb_stick");  // Deregister the char device
         return -1;
     }
-    pr_info("USB driver for %s initialised successfully.\n", usb_driver.name);
+    printk(KERN_INFO "USB driver for %s initialised successfully.\n", usb_driver.name);
     return 0;
 }
 
@@ -104,7 +105,7 @@ static void __exit usb_exit(void)
 
     // Deregister the USB driver
     usb_deregister(&usb_driver);
-    pr_info("USB driver for %s deregistered.\n", usb_driver.name);
+    printk(KERN_INFO "USB driver for %s deregistered.\n", usb_driver.name);
 }
 
 // Register the init and exit functions
@@ -113,5 +114,5 @@ module_exit(usb_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Emer, Conor, Fionn");
-MODULE_DESCRIPTION("USB Stick Driver with Character Device Interface");
+MODULE_DESCRIPTION("USB Stick Driver");
 MODULE_VERSION("1.0");
