@@ -4,12 +4,15 @@
 #include <linux/fs.h>        // For file operations
 #include <linux/uaccess.h>   // For copy_to_user, copy_from_user
 #include <linux/device.h>    // For class_create, device_create
+#include <linux/wait.h>      // For wait queues
+#include <linux/sched.h>     // For TASK_INTERRUPTIBLE, TASK_RUNNING
 
-#define MAJOR_NUMBER 42 // MAJOR_NUMBER number for the character device
+#define MAJOR_NUMBER 42 // the answer to life, the universe, and everything
 
 #define BUFFER_SIZE 1024
 static char buffer[BUFFER_SIZE];  // Buffer to store data
 static int data_available = 0;    // Flag to track if data is available
+static DECLARE_WAIT_QUEUE_HEAD(wait_queue); // Declare the wait queue
 
 // Define the file operations structure
 static int usb_open(struct inode *inode, struct file *file)
@@ -36,59 +39,52 @@ static int usb_release(struct inode *inode, struct file *file)
     return 0;
 }
 
-static ssize_t usb_read(struct file *file, char __user *user_buffer, size_t len, loff_t *offset)
-{
-    ssize_t bytes_read = 0;
-
+// Blocking read function: waits if no data is available
+static ssize_t usb_read(struct file *file, char __user *user_buffer, size_t len, loff_t *offset) {
+    int bytes_to_read;
+    
     printk(KERN_INFO "USB Stick: Read called\n");
 
-    // If no data is available, we need to block the read operation
+    // Block until data is available in the buffer
     if (data_available == 0) {
-        printk(KERN_INFO "USB Stick: No data available to read\n");
-        return 0;  // No data available to read, return 0 bytes
+        printk(KERN_INFO "USB Stick: No data, waiting...\n");
+        wait_event_interruptible(wait_queue, data_available > 0);
     }
 
-    // Simulate reading the buffer by copying data to the user buffer
-    while (len && data_available > 0) {
-        if (copy_to_user(user_buffer + bytes_read, buffer + bytes_read, 1)) {
-            printk(KERN_ERR "Failed to copy data to user space\n");
-            return -EFAULT;  // Return error if copy to user fails
-        }
-
-        bytes_read++;  // Increment bytes read
-        len--;          // Decrease remaining bytes to read
-        data_available--; // Decrease available data
+    bytes_to_read = min(len, (size_t)data_available);
+    if (copy_to_user(user_buffer, buffer, bytes_to_read)) {
+        return -EFAULT;
     }
 
-    printk(KERN_INFO "USB Stick: Read %zd bytes\n", bytes_read);
-    return bytes_read;  // Return the number of bytes successfully read
+    data_available = 0; // Mark buffer as empty after reading
+
+    return bytes_to_read;
 }
 
-static ssize_t usb_write(struct file *file, const char __user *user_buffer, size_t len, loff_t *offset)
-{
-    ssize_t bytes_written = 0;
+// Blocking write function: waits if buffer is full
+static ssize_t usb_write(struct file *file, const char __user *user_buffer, size_t len, loff_t *offset) {
+    int bytes_to_write;
 
     printk(KERN_INFO "USB Stick: Write called\n");
 
-    // Ensure that there is enough space in the buffer
-    while (len && bytes_written < BUFFER_SIZE) {
-        // Copy data from user-space to kernel-space
-        if (copy_from_user(buffer + bytes_written, user_buffer + bytes_written, 1)) {
-            printk(KERN_ERR "Failed to copy data from user space\n");
-            return -EFAULT;  // Return error if copy fails
-        }
-
-        bytes_written++;
-        len--;  // Decrement the remaining bytes to write
+    // Block until space is available in the buffer
+    if (data_available == BUFFER_SIZE) {
+        printk(KERN_INFO "USB Stick: Buffer full, waiting...\n");
+        wait_event_interruptible(wait_queue, data_available < BUFFER_SIZE);
     }
 
-    // Mark how much data was written in the buffer
-    data_available = bytes_written;
+    bytes_to_write = min(len, sizeof(buffer) - data_available);
+    if (copy_from_user(buffer + data_available, user_buffer, bytes_to_write)) {
+        return -EFAULT;
+    }
 
-    printk(KERN_INFO "USB Stick: Written %zd bytes\n", bytes_written);
-    return bytes_written;  // Return the number of bytes written
+    data_available += bytes_to_write;  // Update data available in the buffer
+
+    // Wake up any waiting readers
+    wake_up_interruptible(&wait_queue);
+
+    return bytes_to_write;
 }
-
 
 // Define the file operations structure
 static struct file_operations fops = {
@@ -181,6 +177,6 @@ module_init(usb_init);
 module_exit(usb_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Your Name");
+MODULE_AUTHOR("Emer, Fionn, Conor");
 MODULE_DESCRIPTION("USB Stick Driver");
 MODULE_VERSION("1.0");
