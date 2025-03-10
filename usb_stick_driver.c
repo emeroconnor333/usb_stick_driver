@@ -6,13 +6,36 @@
 #include <linux/device.h>    // For class_create, device_create
 #include <linux/wait.h>      // For wait queues
 #include <linux/sched.h>     // For TASK_INTERRUPTIBLE, TASK_RUNNING
+#include <linux/proc_fs.h>   // For /proc file
+#include <linux/seq_file.h>  // For seq_file
 
 #define MAJOR_NUMBER 42 // the answer to life, the universe, and everything
-
 #define BUFFER_SIZE 1024
+
 static char buffer[BUFFER_SIZE];  // Buffer to store data
 static int data_available = 0;    // Flag to track if data is available
+static int is_plugged_in = 0;     // 1 if USB stick is plugged in, 0 otherwise
 static DECLARE_WAIT_QUEUE_HEAD(wait_queue); // Declare the wait queue
+
+static int proc_show(struct seq_file *m, void *v) {
+    seq_printf(m, "USB Stick Statistics\n");
+    seq_printf(m, "Plugged in: %s\n", (is_plugged_in == 1) ? "Yes" : "No");
+    seq_printf(m, "Buffer space left: %d bytes\n", BUFFER_SIZE - data_available);
+    return 0;
+}
+
+// /proc file open function
+static int proc_open(struct inode *inode, struct file *file) {
+    return single_open(file, proc_show, NULL);
+}
+
+// File operations for /proc file
+static const struct proc_ops proc_fops = {
+    .proc_open = proc_open,
+    .proc_read = seq_read,
+    .proc_lseek = seq_lseek,
+    .proc_release = single_release,
+};
 
 // Define the file operations structure
 static int usb_open(struct inode *inode, struct file *file)
@@ -95,6 +118,20 @@ static struct file_operations fops = {
     .write = usb_write,
 };
 
+// Probe function: called when USB device inserted
+static int usb_probe(struct usb_interface *interface, const struct usb_device_id *id) {
+    printk(KERN_INFO "USB Stick inserted! Vendor: 0x%X, Product: 0x%X\n",
+           id->idVendor, id->idProduct);
+    is_plugged_in = 1; // USB stick is plugged in
+    return 0;
+}
+
+// Disconnect function: called when USB device removed
+static void usb_disconnect(struct usb_interface *interface) {
+    printk(KERN_INFO "USB Stick removed!\n");
+    is_plugged_in = 0;
+}
+
 // Declare the USB driver
 static struct usb_device_id usb_table[] = {
     { USB_DEVICE(0x06, 0x50) },  // Vendor: 0x06, Product: 0x50 for Mass Storage Class
@@ -106,8 +143,8 @@ MODULE_DEVICE_TABLE(usb, usb_table);
 static struct usb_driver usb_driver = {
     .name = "usb_stick_driver",
     .id_table = usb_table,
-    .probe = NULL,  // Placeholder probe function
-    .disconnect = NULL,  // Placeholder disconnect function
+    .probe = usb_probe,  // Placeholder probe function
+    .disconnect = usb_disconnect,  // Placeholder disconnect function
 };
 
 // Declare the device class
@@ -145,8 +182,12 @@ static int __init usb_init(void)
 
     // Create the device file under /dev
     device_create(usb_class, NULL, MKDEV(MAJOR_NUMBER, 0), NULL, "usb_stick");
-    // Set permissions for the device file (0666 means rw-rw-rw-)
-    // chmod("/dev/usb_stick", S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+
+    // Create the /proc file
+    if (!proc_create("usb_stats", 0444, NULL, &proc_fops)) {
+        pr_err("Failed to create /proc/usb_stats\n");
+        return -ENOMEM;
+    }
 
     return 0;
 }
@@ -170,6 +211,10 @@ static void __exit usb_exit(void)
     // Destroy the device class
     class_destroy(usb_class);  // Removes the class from /sys/class/
     printk(KERN_INFO "USB device class destroyed.\n");
+
+    // Remove the /proc file
+    remove_proc_entry("usb_stats", NULL);
+    printk(KERN_INFO "/proc/usb_stats file removed.\n");
 }
 
 

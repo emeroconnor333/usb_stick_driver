@@ -30,3 +30,5 @@ Now your driver should be the one in control of the USB stick
 - gcc -o usb_stick_app usb_stick_app.c
 - ./usb_stick_app
 
+### To Check /proc/usb_stats
+- cat /proc/usb_stats
