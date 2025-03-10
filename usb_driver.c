@@ -124,5 +124,5 @@ module_init(usb_driver_init);
 module_exit(usb_driver_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Your Name");
+MODULE_AUTHOR("Emer,Conor,Fionn");
 MODULE_DESCRIPTION("USB Device Driver with /proc File");
