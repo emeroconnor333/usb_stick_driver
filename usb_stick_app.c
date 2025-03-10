@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <pthread.h>
+#include <stdlib.h>
 
 #define BUFFER_SIZE 1024
 
@@ -12,7 +13,7 @@ void *write_thread(void *arg) {
     char write_buffer[BUFFER_SIZE];
     ssize_t bytes_written;
 
-    while (1) {
+  
         // Prompt the user for input
         printf("Enter data to write to the USB stick: ");
         fgets(write_buffer, BUFFER_SIZE, stdin);  // Read user input
@@ -28,17 +29,14 @@ void *write_thread(void *arg) {
         }
 
         printf("Written %zd bytes: %s\n", bytes_written, write_buffer);
-        break;
+        return NULL;
     }
 
-    return NULL;
-}
 
 void *read_thread(void *arg) {
     char read_buffer[BUFFER_SIZE];
     ssize_t bytes_read;
 
-    while (1) {
         bytes_read = read(fd, read_buffer, BUFFER_SIZE);
         if (bytes_read == -1) {
             perror("Failed to read from USB stick");
@@ -48,13 +46,13 @@ void *read_thread(void *arg) {
         // Null-terminate the read buffer
         read_buffer[bytes_read] = '\0';
         printf("Read %zd bytes: %s\n", bytes_read, read_buffer);
+        return NULL;
     }
 
-    return NULL;
-}
 
 int main() {
     pthread_t writer, reader;
+    int choice;
 
     // Open the USB stick device file
     fd = open("/dev/usb_stick", O_RDWR);
@@ -65,14 +63,36 @@ int main() {
 
     printf("USB stick opened successfully\n");
 
-    // Create threads for writing and reading
-    pthread_create(&writer, NULL, write_thread, NULL);
-    pthread_create(&reader, NULL, read_thread, NULL);
+       while (1) {
+        printf("\nUSB Stick Menu:\n");
+        printf("1. Write to USB\n");
+        printf("2. Read from USB\n");
+        printf("3. Exit\n");
+        printf("Enter your choice: ");
 
-    // Wait for threads to finish
-    pthread_join(writer, NULL);
-    pthread_join(reader, NULL);
+        if (scanf("%d", &choice) != 1) {
+            printf("Invalid input. Please enter a number.\n");
+            while (getchar() != '\n'); // Clear input buffer
+            continue;
+        }
+        getchar(); // Consume newline left in input buffer
 
-    close(fd);
-    return 0;
+        switch (choice) {
+            case 1:
+                pthread_create(&writer, NULL, write_thread, NULL);
+                pthread_join(writer, NULL);
+                break;
+            case 2:
+                pthread_create(&reader, NULL, read_thread, NULL);
+                pthread_join(reader, NULL);
+                break;
+            case 3:
+                printf("Exiting...\n");
+                close(fd);
+                return 0;
+            default:
+                printf("Invalid choice. Please enter 1, 2, or 3.\n");
+        }
+    }
+ 
 }
