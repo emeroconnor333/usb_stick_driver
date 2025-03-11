@@ -1,14 +1,24 @@
-bj-m += usb_buffer_storage.o
+obj-m += usb_stick_driver.o
+
 KDIR := /lib/modules/$(shell uname -r)/build
 PWD := $(shell pwd)
 
 all:
-        make -C $(KDIR) M=$(PWD) modules
+        $(MAKE) -C $(KDIR) M=$(PWD) modules
 
 clean:
-        make -C $(KDIR) M=$(PWD) clean
+        $(MAKE) -C $(KDIR) M=$(PWD) clean
 
+load:
+        sudo insmod usb_stick_driver.ko
 
+unload:
+        sudo rmmod usb_stick_driver
+
+reload: unload load
+
+dmesg:
+        dmesg | tail -30
 
 
 
