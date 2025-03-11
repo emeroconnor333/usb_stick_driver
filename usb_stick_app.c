@@ -27,11 +27,12 @@ void wait_for_usb_device() {
 
     // Create monitor for USB events
     mon = udev_monitor_new_from_netlink(udev, "udev");
-    udev_monitor_filter_add_match_subsystem_devtype(mon, "usb", "u>
+    udev_monitor_filter_add_match_subsystem_devtype(mon, "usb", "usb_device");
     udev_monitor_enable_receiving(mon);
 
     printf("Waiting for USB device...\n");
-   // Loop until a device is plugged in
+
+    // Loop until a device is plugged in
     while (1) {
         dev = udev_monitor_receive_device(mon);
         if (dev) {
@@ -79,7 +80,7 @@ void *write_thread(void *arg) {
     // Prompt the user for input
     printf("Enter data to write to the virtual USB: ");
     fgets(write_buffer, BUFFER_SIZE, stdin);
-    write_buffer[strcspn(write_buffer, "\n")] = '\0'; // Remove ne>
+    write_buffer[strcspn(write_buffer, "\n")] = '\0'; // Remove newline
 
     // Encrypt before writing
     encrypt(write_buffer, shift);
@@ -98,7 +99,7 @@ void *read_thread(void *arg) {
     // Simulate reading from virtual buffer
     strncpy(read_buffer, virtual_buffer, BUFFER_SIZE);
 
-   // Decrypt after reading
+    // Decrypt after reading
     decrypt(read_buffer, shift);
 
     printf("Read (Decrypted): %s\n", read_buffer);
@@ -131,7 +132,7 @@ fd = open("/dev/usb_stick", O_RDWR);
 
 
     while (1) {
-       printf("\nUSB Stick Menu:\n");
+        printf("\nUSB Stick Menu:\n");
         printf("1. Write to USB (Encrypted)\n");
         printf("2. Read from USB (Decrypted)\n");
         printf("3. Exit\n");
@@ -157,8 +158,7 @@ fd = open("/dev/usb_stick", O_RDWR);
                 printf("Exiting...\n");
                 return 0;
             default:
-                printf("Invalid choice. Please enter 1, 2, or 3.\n>
+                printf("Invalid choice. Please enter 1, 2, or 3.\n");
         }
     }
 }
-
