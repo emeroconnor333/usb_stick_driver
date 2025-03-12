@@ -20,12 +20,12 @@ static int device_open(struct inode *inode, struct file *file) {
 }
 
 // Read function
-static ssize_t device_read(struct file *file, char __user *buffer, size_t len, loff_t *offset) {
-    return simple_read_from_buffer(buffer, len, offset, device_buffer, strlen(device_buffer));
+static ssize_t device_read(struct file *file, char __user *buffer, size_t len, loff_t *off>
+    return simple_read_from_buffer(buffer, len, offset, device_buffer, strlen(device_buffe>
 }
 
 // Write function
-static ssize_t device_write(struct file *file, const char __user *buffer, size_t len, loff_t *offset) {
+static ssize_t device_write(struct file *file, const char __user *buffer, size_t len, loff>
     if (len > sizeof(device_buffer) - 1) 
         return -EINVAL;
     if (copy_from_user(device_buffer, buffer, len)) 
@@ -39,7 +39,7 @@ static long device_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
     int user_shift;
     switch (cmd) {
         case IOCTL_GET_SHIFT:
-            if (copy_to_user((int __user *)arg, &shift_amount, sizeof(shift_amount))) {
+  if (copy_to_user((int __user *)arg, &shift_amount, sizeof(shift_amount))) {
                 return -EFAULT;
             }
             return 0;
@@ -48,7 +48,7 @@ static long device_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                 return -EFAULT;
             }
             shift_amount = user_shift;
-            pr_info("Caesar cipher shift set to: %d\n", shift_amount);
+            pr_info("Caesar cipher shift updated to: %d\n", shift_amount);
             return 0;
         default:
             return -EINVAL;
@@ -56,7 +56,7 @@ static long device_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 }
 
 // Proc file read function
-static ssize_t proc_read(struct file *file, char __user *ubuf, size_t count, loff_t *ppos) {
+static ssize_t proc_read(struct file *file, char __user *ubuf, size_t count, loff_t *ppos)>
     char buf[32];
     int len = snprintf(buf, sizeof(buf), "Shift: %d\n", shift_amount);
     return simple_read_from_buffer(ubuf, count, ppos, buf, len);
@@ -79,7 +79,7 @@ static int __init usb_stick_init(void) {
     major_number = register_chrdev(0, DEVICE_NAME, &fops);
     if (major_number < 0) {
         pr_err("Failed to register character device\n");
-        return major_number;
+ return major_number;
     }
 
     proc_entry = proc_create("usb_shift", 0666, NULL, &proc_fops);
@@ -89,7 +89,7 @@ static int __init usb_stick_init(void) {
         return -ENOMEM;
     }
 
-    pr_info("USB Stick Driver Loaded (Major: %d)\n", major_number);
+    pr_info("USB Stick Driver Loaded (Major: %d), Initial Shift: %d\n", major_number, shif>
     return 0;
 }
 
@@ -106,3 +106,6 @@ module_exit(usb_stick_exit);
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("USB Stick Driver with Caesar Cipher Shift");
 MODULE_AUTHOR("Conor, Fionn, Emer");
+
+
+
